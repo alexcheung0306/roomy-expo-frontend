@@ -2,6 +2,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { FlashList } from '@shopify/flash-list';
 import { cssInterop } from 'nativewind';
 import * as React from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
   Button as RNButton,
@@ -42,6 +43,7 @@ import { Toggle } from '@/components/nativewindui/Toggle';
 
 import { useColorScheme } from '@/lib/useColorScheme';
 import { COLORS } from '@/theme/colors';
+import { userService } from '@/lib/api';
 
 cssInterop(FlashList, {
   className: 'style',
@@ -438,6 +440,86 @@ const COMPONENTS: ComponentItem[] = [
       return (
         <View className="items-center">
           <Toggle value={switchValue} onValueChange={setSwitchValue} className="mx-auto" />
+        </View>
+      );
+    },
+  },
+
+  {
+    name: 'API Example - Users',
+    component: function ApiExample() {
+      const [users, setUsers] = React.useState<any[]>([]);
+      const [loading, setLoading] = React.useState(false);
+      const [error, setError] = React.useState<string | null>(null);
+
+      // Fetch users from backend
+      const fetchUsers = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const data = await userService.getAll();
+          setUsers(data);
+        } catch (err: any) {
+          setError(err.message || 'Failed to fetch users');
+          Alert.alert('Error', err.message || 'Could not connect to backend');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Create a new user
+      const createUser = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const newUser = await userService.create({
+            name: `User ${Date.now()}`,
+            email: `user${Date.now()}@example.com`,
+          });
+          Alert.alert('Success', `Created user: ${newUser.name}`);
+          // Refresh the list
+          fetchUsers();
+        } catch (err: any) {
+          setError(err.message || 'Failed to create user');
+          Alert.alert('Error', err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Load users when component mounts
+      React.useEffect(() => {
+        fetchUsers();
+      }, []);
+
+      return (
+        <View className="gap-3">
+          <View className="flex-row gap-2">
+            <Button onPress={fetchUsers} disabled={loading} variant="secondary" className="flex-1">
+              {loading ? <ActivityIndicator /> : <Text>Refresh</Text>}
+            </Button>
+            <Button onPress={createUser} disabled={loading} className="flex-1">
+              {loading ? <ActivityIndicator /> : <Text>Add User</Text>}
+            </Button>
+          </View>
+
+          {error && (
+            <Text className="text-destructive text-center text-sm">{error}</Text>
+          )}
+
+          {users.length === 0 && !loading && !error && (
+            <Text className="text-muted-foreground text-center text-sm">
+              No users found. Click "Add User" to create one!
+            </Text>
+          )}
+
+          {users.map((user) => (
+            <View key={user.id} className="p-3 bg-muted rounded-lg">
+              <Text className="font-semibold">ID: {user.id}</Text>
+              {user.name && <Text>Name: {user.name}</Text>}
+              {user.email && <Text>Email: {user.email}</Text>}
+            </View>
+          ))}
         </View>
       );
     },
